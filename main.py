@@ -167,7 +167,8 @@ def predict_penalty(player_name: str, context: Optional[str] = "knockout"):
         SELECT id, name, country, position, total_penalties_taken, total_scored, 
                conversion_rate, shootout_taken, shootout_scored, shootout_rate, 
                favorite_direction, wc_group, is_primary_taker
-        FROM players WHERE name = ?
+        FROM players WHERE LOWER(name) = LOWER(?)
+
     """, (player_name,))
 
     player = cursor.fetchone()
