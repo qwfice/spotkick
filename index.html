@@ -1346,6 +1346,103 @@
 
     <script>
         // ===== CONFIG =====
+        // Helper: predict a specific player (used by search suggestions)
+async function predictPlayer(name) {
+    const btn = document.getElementById('sendBtn');
+    addMessage(name, true);
+    showTyping();
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_URL}/predict/${encodeURIComponent(name)}?context=${currentContext}`);
+        hideTyping();
+        
+        if (!response.ok) {
+            addMessage(`❌ Prediction failed for ${name}.`, false);
+            btn.disabled = false;
+            return;
+        }
+        
+        const data = await response.json();
+        renderPrediction(data);
+    } catch (error) {
+        hideTyping();
+        addMessage(`⚠️ Could not connect to prediction engine.`, false);
+    }
+    
+    btn.disabled = false;
+}
+
+// Helper: render prediction card
+function renderPrediction(data) {
+    const confidenceClass = data.confidence.toLowerCase().includes('high') ? 'conf-high' : 
+                           data.confidence.toLowerCase().includes('medium') ? 'conf-medium' : 'conf-low';
+    
+    const recentHtml = data.recent_form.map(r => {
+        const emoji = r.result === 'scored' ? '✅' : '❌';
+        return `${emoji} ${r.competition} (${r.context})`;
+    }).join('<br>');
+    
+    const directionHtml = Object.entries(data.direction_breakdown).map(([dir, stats]) => {
+        const pct = stats.rate || 0;
+        return `
+            <div class="dir-bar">
+                <span class="label">${dir}</span>
+                <div class="track"><div class="fill" style="width: ${pct}%"></div></div>
+                <span class="pct">${pct}%</span>
+            </div>
+        `;
+    }).join('');
+    
+    const html = `
+        <div class="prediction-card">
+            <div class="player-name">${data.player_name} <span style="font-size:14px; color: var(--text-muted);">${data.country}</span></div>
+            <div class="player-meta">${data.total_penalties} career penalties analyzed</div>
+            
+            <div class="big-prediction">
+                <div class="number">${data.predicted_score_probability}%</div>
+                <div class="label">Predicted Score Probability</div>
+            </div>
+            
+            <span class="confidence-pill ${confidenceClass}">${data.confidence}</span>
+            
+            <div class="insight-box">
+                <strong>🧠 AI Insight:</strong> ${data.ai_insight}
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-cell">
+                    <div class="value">${data.overall_conversion_rate}%</div>
+                    <div class="label">Career Rate</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="value">${data.shootout_conversion_rate}%</div>
+                    <div class="label">Shootout Rate</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="value">${data.context_analysis.context_rate}%</div>
+                    <div class="label">${data.context_analysis.context.replace(/_/g, ' ')}</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="value">${data.favorite_direction}</div>
+                    <div class="label">Favorite Side</div>
+                </div>
+            </div>
+            
+            <div class="direction-bars">
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Direction Breakdown</div>
+                ${directionHtml}
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Recent Form (Last 5)</div>
+                <div style="font-size: 13px; line-height: 1.8; color: var(--text-muted);">${recentHtml}</div>
+            </div>
+        </div>
+    `;
+    
+    addMessage(html, false);
+}
        const API_URL = "https://spotkick-production.up.railway.app"; // Change to your deployed backend URL
         let currentContext = "knockout";
         let isPlaying = false;
@@ -1490,105 +1587,63 @@
         }
 
         async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const btn = document.getElementById('sendBtn');
-            const text = input.value.trim();
-
-            if (!text) return;
-
-            input.value = '';
-            btn.disabled = true;
-            addMessage(text, true);
-            showTyping();
-
-            try {
-                const response = await fetch(`${API_URL}/predict/${encodeURIComponent(text)}?context=${currentContext}`);
-                hideTyping();
-
-                if (!response.ok) {
-                    const err = await response.json();
-                    addMessage(`❌ ${err.error || 'Player not found'}. Try another name.`, false);
-                    btn.disabled = false;
-                    return;
-                }
-
-                const data = await response.json();
-
-                const confidenceClass = data.confidence.toLowerCase().includes('high') ? 'conf-high' : 
-                                       data.confidence.toLowerCase().includes('medium') ? 'conf-medium' : 'conf-low';
-
-                const recentHtml = data.recent_form.map(r => {
-                    const emoji = r.result === 'scored' ? '✅' : '❌';
-                    return `${emoji} ${r.competition} (${r.context})`;
-                }).join('<br>');
-
-                const directionHtml = Object.entries(data.direction_breakdown).map(([dir, stats]) => {
-                    const pct = stats.rate || 0;
-                    return `
-                        <div class="dir-bar">
-                            <span class="label">${dir}</span>
-                            <div class="track"><div class="fill" style="width: ${pct}%"></div></div>
-                            <span class="pct">${pct}%</span>
-                        </div>
-                    `;
-                }).join('');
-
-                const html = `
-                    <div class="prediction-card">
-                        <div class="player-name">${data.player_name} <span style="font-size:14px; color: var(--text-muted);">${data.country}</span></div>
-                        <div class="player-meta">${data.total_penalties} career penalties analyzed</div>
-
-                        <div class="big-prediction">
-                            <div class="number">${data.predicted_score_probability}%</div>
-                            <div class="label">Predicted Score Probability</div>
-                        </div>
-
-                        <span class="confidence-pill ${confidenceClass}">${data.confidence}</span>
-
-                        <div class="insight-box">
-                            <strong>🧠 AI Insight:</strong> ${data.ai_insight}
-                        </div>
-
-                        <div class="stats-row">
-                            <div class="stat-cell">
-                                <div class="value">${data.overall_conversion_rate}%</div>
-                                <div class="label">Career Rate</div>
-                            </div>
-                            <div class="stat-cell">
-                                <div class="value">${data.shootout_conversion_rate}%</div>
-                                <div class="label">Shootout Rate</div>
-                            </div>
-                            <div class="stat-cell">
-                                <div class="value">${data.context_analysis.context_rate}%</div>
-                                <div class="label">${data.context_analysis.context.replace(/_/g, ' ')}</div>
-                            </div>
-                            <div class="stat-cell">
-                                <div class="value">${data.favorite_direction}</div>
-                                <div class="label">Favorite Side</div>
-                            </div>
-                        </div>
-
-                        <div class="direction-bars">
-                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Direction Breakdown</div>
-                            ${directionHtml}
-                        </div>
-
-                        <div style="margin-top: 20px;">
-                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Recent Form (Last 5)</div>
-                            <div style="font-size: 13px; line-height: 1.8; color: var(--text-muted);">${recentHtml}</div>
-                        </div>
-                    </div>
-                `;
-
-                addMessage(html, false);
-
-            } catch (error) {
-                hideTyping();
-                addMessage(`⚠️ Could not connect to prediction engine. Make sure the backend is running at ${API_URL}`, false);
-            }
-
+    const input = document.getElementById('userInput');
+    const btn = document.getElementById('sendBtn');
+    const text = input.value.trim();
+    
+    if (!text) return;
+    
+    input.value = '';
+    btn.disabled = true;
+    addMessage(text, true);
+    showTyping();
+    
+    try {
+        // Step 1: Search for the player (fuzzy match)
+        const searchResponse = await fetch(`${API_URL}/search?q=${encodeURIComponent(text)}`);
+        const searchData = await searchResponse.json();
+        
+        if (!searchData.results || searchData.results.length === 0) {
+            hideTyping();
+            addMessage(`❌ No player found for "${text}". Try: Messi, Ronaldo, Mbappe, Kane, Haaland...`, false);
             btn.disabled = false;
+            return;
         }
+        
+        // If multiple results, show them as clickable options
+        if (searchData.results.length > 1) {
+            hideTyping();
+            let optionsHtml = `<div style="margin-bottom: 8px;">🔍 Did you mean one of these?</div>`;
+            searchData.results.slice(0, 5).forEach(r => {
+                optionsHtml += `<div class="suggestion-chip" style="display: inline-block; margin: 4px; cursor: pointer;" onclick="predictPlayer('${r.name.replace(/'/g, "\\'")}')">${r.name} (${r.country}) ${r.conversion_rate}%</div>`;
+            });
+            addMessage(optionsHtml, false);
+            btn.disabled = false;
+            return;
+        }
+        
+        // Step 2: Exact prediction with the matched name
+        const playerName = searchData.results[0].name;
+        const response = await fetch(`${API_URL}/predict/${encodeURIComponent(playerName)}?context=${currentContext}`);
+        hideTyping();
+        
+        if (!response.ok) {
+            const err = await response.json();
+            addMessage(`❌ ${err.error || 'Prediction failed'}. Try another name.`, false);
+            btn.disabled = false;
+            return;
+        }
+        
+        const data = await response.json();
+        renderPrediction(data);
+        
+    } catch (error) {
+        hideTyping();
+        addMessage(`⚠️ Could not connect to prediction engine. Make sure the backend is running at ${API_URL}`, false);
+    }
+    
+    btn.disabled = false;
+}
 
         // ===== AUDIO PLAYER =====
         function toggleAudio() {
