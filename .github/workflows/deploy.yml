@@ -1,0 +1,46 @@
+name: Deploy SpotKick
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test API
+        run: |
+          python main.py &
+          sleep 3
+          curl -s http://localhost:8000/ | grep "live"
+          curl -s http://localhost:8000/players | grep "count"
+          curl -s "http://localhost:8000/predict/Lionel%20Messi" | grep "predicted_score_probability"
+          pkill -f "python main.py" || true
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        uses: railway/cli@v3
+        with:
+          service: spotkick-api
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

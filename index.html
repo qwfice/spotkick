@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SpotKick — World Cup Penalty Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <style>
+        :root {
+            --bg: #050508;
+            --bg-light: #0a0a12;
+            --surface: #11111a;
+            --surface-light: #1a1a28;
+            --gold: #FFD700;
+            --gold-dim: #B8860B;
+            --green: #00C853;
+            --green-dim: #009940;
+            --text: #ffffff;
+            --text-muted: #6b6b7b;
+            --text-dim: #3a3a4a;
+            --danger: #ff4444;
+            --warning: #ffaa00;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+            background: var(--bg);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== PARTICLE CANVAS ===== */
+        #particleCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.6;
+        }
+
+        /* ===== NAVIGATION ===== */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(5, 5, 8, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        nav.scrolled {
+            padding: 14px 40px;
+            background: rgba(5, 5, 8, 0.9);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-mark {
+            width: 42px; height: 42px;
+            background: var(--gold);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 20px;
+            color: var(--bg);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 22px;
+            letter-spacing: -0.5px;
+            color: var(--text);
+        }
+
+        .logo-text span {
+            color: var(--gold);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--gold);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -6px; left: 0;
+            width: 0; height: 2px;
+            background: var(--gold);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            padding: 10px 24px;
+            background: var(--gold);
+            color: var(--bg);
+            border: none;
+            border-radius: 24px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 30px rgba(255, 215, 0, 0.4);
+        }
+
+        /* ===== HERO SECTION ===== */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+            overflow: hidden;
+            z-index: 2;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(255, 215, 0, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(0, 200, 83, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 100%, rgba(255, 215, 0, 0.04) 0%, transparent 40%);
+            z-index: -2;
+        }
+
+        .hero-video-fallback {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #0a0a12 0%, #050508 50%, #0d0d1a 100%);
+            z-index: -3;
+        }
+
+        /* Uncomment to use actual video background */
+        .hero-video {
+            position: absolute;
+            inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0.15;
+            z-index: -1;
+            display: none; /* Set to block and add src when you have a video file */
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 32px;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 8px; height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(40px, 8vw, 96px);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -3px;
+            margin-bottom: 24px;
+            max-width: 900px;
+        }
+
+        .hero h1 .highlight {
+            background: var(--gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+        }
+
+        .hero h1 .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: 0;
+            width: 100%; height: 4px;
+            background: var(--gold);
+            border-radius: 2px;
+            opacity: 0.3;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(16px, 2.5vw, 22px);
+            color: var(--text-muted);
+            max-width: 600px;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        .hero-cta-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            animation: fadeInUp 1s ease 0.3s both;
+        }
+
+        .btn-primary {
+            padding: 16px 40px;
+            background: var(--gold);
+            color: var(--bg);
+            border: none;
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 50px rgba(255, 215, 0, 0.5);
+        }
+
+        .btn-secondary {
+            padding: 16px 40px;
+            background: transparent;
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+            animation: bounce 2s infinite;
+            cursor: pointer;
+        }
+
+        .scroll-indicator svg {
+            width: 24px; height: 24px;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-10px); }
+            60% { transform: translateX(-50%) translateY(-5px); }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== MARQUEE ===== */
+        .marquee-section {
+            padding: 24px 0;
+            background: rgba(255, 215, 0, 0.03);
+            border-top: 1px solid rgba(255, 215, 0, 0.08);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+
+        .marquee-track {
+            display: flex;
+            animation: marquee 30s linear infinite;
+            width: max-content;
+        }
+
+        .marquee-item {
+            padding: 0 40px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .marquee-item::after {
+            content: '⚽';
+            opacity: 0.5;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* ===== FEATURES ===== */
+        .features {
+            padding: 120px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(28px, 5vw, 48px);
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 18px;
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px 32px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--gold);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            width: 56px; height: 56px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 24px;
+        }
+
+        .feature-card h3 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* ===== PREDICTOR SECTION ===== */
+        .predictor-section {
+            padding: 100px 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .predictor-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .predictor-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .predictor-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(28px, 5vw, 48px);
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        .predictor-header p {
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        .predictor-card {
+            background: var(--surface);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        .predictor-chat {
+            height: 500px;
+            overflow-y: auto;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .predictor-chat::-webkit-scrollbar { width: 4px; }
+        .predictor-chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .chat-message {
+            max-width: 85%;
+            padding: 16px 20px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.6;
+            animation: messageIn 0.4s ease;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            background: var(--gold);
+            color: var(--bg);
+            font-weight: 600;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-message.ai {
+            align-self: flex-start;
+            background: var(--surface-light);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.ai .prediction-card {
+            background: var(--bg);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .prediction-card .player-name {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .prediction-card .player-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .big-prediction {
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .big-prediction .number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 72px;
+            font-weight: 700;
+            color: var(--green);
+            line-height: 1;
+            letter-spacing: -2px;
+            text-shadow: 0 0 60px rgba(0, 200, 83, 0.3);
+        }
+
+        .big-prediction .label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .confidence-pill {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .conf-high { background: rgba(0, 200, 83, 0.15); color: var(--green); }
+        .conf-medium { background: rgba(255, 170, 0, 0.15); color: var(--warning); }
+        .conf-low { background: rgba(255, 68, 68, 0.15); color: var(--danger); }
+
+        .insight-box {
+            background: rgba(255, 215, 0, 0.05);
+            border-left: 3px solid var(--gold);
+            padding: 14px 16px;
+            border-radius: 0 12px 12px 0;
+            margin: 16px 0;
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .insight-box strong { color: var(--text); }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stat-cell {
+            background: var(--surface-light);
+            padding: 14px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-cell .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--green);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .stat-cell .label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .direction-bars {
+            margin-top: 20px;
+        }
+
+        .dir-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+
+        .dir-bar .label {
+            width: 50px;
+            text-transform: capitalize;
+            color: var(--text-muted);
+        }
+
+        .dir-bar .track {
+            flex: 1;
+            height: 8px;
+            background: var(--surface-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .dir-bar .fill {
+            height: 100%;
+            background: var(--gold);
+            border-radius: 4px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .dir-bar .pct {
+            width: 40px;
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 16px 20px;
+            align-self: flex-start;
+        }
+
+        .typing-indicator span {
+            width: 8px; height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .predictor-input-area {
+            padding: 20px 32px;
+            background: var(--bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .context-chips {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .context-chip {
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--surface-light);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            text-transform: capitalize;
+        }
+
+        .context-chip.active {
+            background: var(--gold);
+            color: var(--bg);
+            border-color: var(--gold);
+        }
+
+        .context-chip:hover:not(.active) {
+            border-color: rgba(255, 215, 0, 0.3);
+            color: var(--text);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: var(--surface-light);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 14px 22px;
+            color: var(--text);
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+        }
+
+        .input-wrapper input::placeholder { color: var(--text-dim); }
+
+        .send-btn {
+            width: 48px; height: 48px;
+            background: var(--gold);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+        }
+
+        .send-btn:active { transform: scale(0.95); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .send-btn svg { width: 20px; height: 20px; }
+
+        .suggestion-chips {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+        }
+
+        .suggestion-chip {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            background: rgba(255, 215, 0, 0.08);
+            color: var(--gold);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+        }
+
+        .suggestion-chip:hover {
+            background: rgba(255, 215, 0, 0.15);
+        }
+
+        /* ===== PRIVACY SECTION ===== */
+        .privacy-section {
+            padding: 120px 24px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .privacy-section h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(32px, 6vw, 64px);
+            font-weight: 700;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+            line-height: 1.1;
+        }
+
+        .privacy-section h2 .strikethrough {
+            text-decoration: line-through;
+            text-decoration-color: var(--danger);
+            opacity: 0.6;
+        }
+
+        .privacy-section p {
+            color: var(--text-muted);
+            font-size: 18px;
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .privacy-badges {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .privacy-badge {
+            padding: 12px 24px;
+            background: var(--surface);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .privacy-badge .icon {
+            font-size: 18px;
+        }
+
+        /* ===== HOW IT WORKS ===== */
+        .how-it-works {
+            padding: 120px 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .step {
+            display: flex;
+            gap: 32px;
+            align-items: flex-start;
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+
+        .step:nth-child(even) {
+            flex-direction: row-reverse;
+            transform: translateX(30px);
+        }
+
+        .step-number {
+            width: 64px; height: 64px;
+            background: var(--gold);
+            color: var(--bg);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+        }
+
+        .step-content h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .step-content p {
+            color: var(--text-muted);
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            padding: 60px 24px 40px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            z-index: 2;
+        }
+
+        footer .logo {
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        footer p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        footer .worldcup-badge {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 8px 20px;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* ===== AUDIO PLAYER ===== */
+        .audio-player {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999;
+            background: var(--surface);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+        }
+
+        .audio-player:hover {
+            border-color: rgba(255, 215, 0, 0.2);
+        }
+
+        .audio-player .play-btn {
+            width: 40px; height: 40px;
+            background: var(--gold);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .audio-player .play-btn:hover { transform: scale(1.1); }
+
+        .audio-player .track-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .audio-player .track-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .audio-player .track-artist {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .visualizer {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 24px;
+        }
+
+        .visualizer-bar {
+            width: 3px;
+            background: var(--gold);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .audio-player.minimized {
+            padding: 10px;
+        }
+
+        .audio-player.minimized .track-info,
+        .audio-player.minimized .visualizer {
+            display: none;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            nav { padding: 16px 20px; }
+            .nav-links { display: none; }
+            .hero { padding: 100px 20px 60px; }
+            .features { padding: 80px 20px; }
+            .predictor-section { padding: 60px 20px; }
+            .predictor-chat { height: 400px; padding: 20px; }
+            .big-prediction .number { font-size: 56px; }
+            .step { flex-direction: column !important; gap: 16px; }
+            .step-number { width: 48px; height: 48px; font-size: 22px; }
+            .audio-player { bottom: 16px; right: 16px; }
+        }
+
+        /* ===== UTILS ===== */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- ===== NAV ===== -->
+    <nav id="navbar">
+        <a href="#" class="logo">
+            <div class="logo-mark">SK</div>
+            <div class="logo-text">Spot<span>Kick</span></div>
+        </a>
+        <div class="nav-links">
+            <a href="#predictor">Predictor</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#privacy">Privacy</a>
+            <a href="#predictor" class="nav-cta">Try It Free</a>
+        </div>
+    </nav>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-video-fallback"></div>
+        <!-- 
+            TO ADD VIDEO BACKGROUND:
+            1. Place your video file in the same folder
+            2. Uncomment the video element below and set the src
+            3. Recommended: 10-15 second loop, dark stadium atmosphere
+        -->
+        <!-- <video class="hero-video" autoplay muted loop playsinline>
+            <source src="stadium-loop.mp4" type="video/mp4">
+        </video> -->
+
+        <div class="hero-badge">World Cup 2026 Live</div>
+        <h1>
+            Predict the<br>
+            <span class="highlight">Unpredictable</span>
+        </h1>
+        <p class="hero-subtitle">
+            AI-powered penalty intelligence. Type any player's name and get their exact score probability based on every penalty they've ever taken.
+        </p>
+        <div class="hero-cta-group">
+            <a href="#predictor" class="btn-primary">
+                Start Predicting
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+            <a href="#how-it-works" class="btn-secondary">How It Works</a>
+        </div>
+
+        <div class="scroll-indicator" onclick="document.getElementById('marquee').scrollIntoView({behavior:'smooth'})">
+            <span>Scroll to explore</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+            </svg>
+        </div>
+    </section>
+
+    <!-- ===== MARQUEE ===== -->
+    <div class="marquee-section" id="marquee">
+        <div class="marquee-track">
+            <div class="marquee-item">World Cup 2026 North America</div>
+            <div class="marquee-item">48 Nations. 99 Penalty Takers. One Trophy.</div>
+            <div class="marquee-item">Penalty Shootouts Decide Everything</div>
+            <div class="marquee-item">AI-Powered Predictions</div>
+            <div class="marquee-item">No Login Required</div>
+            <div class="marquee-item">100% Free Forever</div>
+            <div class="marquee-item">Privacy First</div>
+            <div class="marquee-item">World Cup 2026 North America</div>
+            <div class="marquee-item">48 Nations. 99 Penalty Takers. One Trophy.</div>
+            <div class="marquee-item">Penalty Shootouts Decide Everything</div>
+            <div class="marquee-item">AI-Powered Predictions</div>
+            <div class="marquee-item">No Login Required</div>
+            <div class="marquee-item">100% Free Forever</div>
+            <div class="marquee-item">Privacy First</div>
+        </div>
+    </div>
+
+    <!-- ===== FEATURES ===== -->
+    <section class="features">
+        <div class="section-header">
+            <h2>Built for the Biggest Stage</h2>
+            <p>Every penalty tells a story. We read them all.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card" data-animate>
+                <div class="feature-icon">⌨️</div>
+                <h3>Type Any Player</h3>
+                <p>From Messi to Chris Wood. Our database covers all 48 World Cup nations and their designated penalty takers. Just type and predict.</p>
+            </div>
+            <div class="feature-card" data-animate>
+                <div class="feature-icon">🎯</div>
+                <h3>Context Matters</h3>
+                <p>Knockout pressure, shootout nerves, group stage calm — the same player performs differently. We adjust for the exact moment.</p>
+            </div>
+            <div class="feature-card" data-animate>
+                <div class="feature-icon">🔒</div>
+                <h3>Zero Tracking</h3>
+                <p>No accounts. No cookies. No data collection. We don't even know who you are. Your predictions stay between you and the pitch.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== PREDICTOR ===== -->
+    <section class="predictor-section" id="predictor">
+        <div class="predictor-container">
+            <div class="predictor-header">
+                <h2>The Predictor</h2>
+                <p>Type a player name. Watch the AI calculate. Share the result.</p>
+            </div>
+
+            <div class="predictor-card">
+                <div class="predictor-chat" id="chat">
+                    <div class="chat-message ai">
+                        👋 Welcome to <strong>SpotKick</strong>. All 48 World Cup nations are here. 99 penalty takers in the database.<br><br>
+                        <em>Try: Messi, Ronaldo, Mbappe, Son, Salah, Haaland, Oyarzabal, Wood...</em>
+                    </div>
+                </div>
+
+                <div class="predictor-input-area">
+                    <div class="suggestion-chips" id="suggestions">
+                        <span class="suggestion-chip" onclick="setInput('Lionel Messi')">🇦🇷 Messi</span>
+                        <span class="suggestion-chip" onclick="setInput('Cristiano Ronaldo')">🇵🇹 Ronaldo</span>
+                        <span class="suggestion-chip" onclick="setInput('Kylian Mbappe')">🇫🇷 Mbappé</span>
+                        <span class="suggestion-chip" onclick="setInput('Son Heung-Min')">🇰🇷 Son</span>
+                        <span class="suggestion-chip" onclick="setInput('Mohamed Salah')">🇪🇬 Salah</span>
+                        <span class="suggestion-chip" onclick="setInput('Erling Haaland')">🇳🇴 Haaland</span>
+                        <span class="suggestion-chip" onclick="setInput('Hakan Calhanoglu')">🇹🇷 Çalhanoğlu</span>
+                        <span class="suggestion-chip" onclick="setInput('Chris Wood')">🇳🇿 Wood</span>
+                    </div>
+                    <div class="context-chips" id="contextChips">
+                        <span class="context-chip active" data-context="knockout" onclick="setContext(this)">Knockout</span>
+                        <span class="context-chip" data-context="shootout" onclick="setContext(this)">Shootout</span>
+                        <span class="context-chip" data-context="group_stage" onclick="setContext(this)">Group Stage</span>
+                        <span class="context-chip" data-context="league" onclick="setContext(this)">League</span>
+                        <span class="context-chip" data-context="cup" onclick="setContext(this)">Cup</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="text" id="userInput" placeholder="Type a player name..." onkeydown="if(event.key==='Enter') sendMessage()" autocomplete="off">
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== PRIVACY ===== -->
+    <section class="privacy-section" id="privacy">
+        <h2>
+            <span class="strikethrough">Sign Up</span>.<br>
+            <span class="strikethrough">Log In</span>.<br>
+            <span class="strikethrough">Track You</span>.<br>
+            Just Predict.
+        </h2>
+        <p>
+            We built SpotKick because we were tired of apps demanding our email, selling our data, and tracking every click. 
+            This site has no database of users. No analytics. No cookies. We don't even have a login button to break.
+        </p>
+        <div class="privacy-badges">
+            <div class="privacy-badge">
+                <span class="icon">🚫</span>
+                No Accounts
+            </div>
+            <div class="privacy-badge">
+                <span class="icon">🚫</span>
+                No Cookies
+            </div>
+            <div class="privacy-badge">
+                <span class="icon">🚫</span>
+                No Tracking
+            </div>
+            <div class="privacy-badge">
+                <span class="icon">🚫</span>
+                No Ads
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== HOW IT WORKS ===== -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header">
+            <h2>How the Engine Works</h2>
+            <p>Not magic. Just math, history, and pressure.</p>
+        </div>
+        <div class="steps">
+            <div class="step" data-step>
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Career Base Rate</h3>
+                    <p>We start with the player's lifetime penalty conversion rate. Every kick they've ever taken in professional football feeds into this number.</p>
+                </div>
+            </div>
+            <div class="step" data-step>
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Context Pressure</h3>
+                    <p>Knockout stage? Shootout? Group stage? The same player performs differently under different pressure. We apply a context-specific adjustment.</p>
+                </div>
+            </div>
+            <div class="step" data-step>
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Recent Form Blend</h3>
+                    <p>We weigh their last 5 penalties at 30% influence. A hot streak or a cold spell changes the prediction in real-time.</p>
+                </div>
+            </div>
+            <div class="step" data-step>
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Directional Intelligence</h3>
+                    <p>We analyze where they score most and how that direction performs. Left, right, center — every angle has a probability.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer>
+        <a href="#" class="logo">
+            <div class="logo-mark">SK</div>
+            <div class="logo-text">Spot<span>Kick</span></div>
+        </a>
+        <p>99 players. 48 nations. 2,041 penalty events. Free forever.</p>
+        <div class="worldcup-badge">⚽ FIFA World Cup 2026 — North America</div>
+    </footer>
+
+    <!-- ===== AUDIO PLAYER ===== -->
+    <!-- 
+        COPYRIGHT NOTICE:
+        IShowSpeed's "Champions" is copyrighted material. 
+        You MUST obtain proper licensing before distributing this song.
+
+        Alternatives:
+        • Royalty-free: Epidemic Sound, Artlist, Uppbeat.io
+        • Creative Commons: Free Music Archive
+        • Original: Commission a producer on Fiverr ($50-100)
+
+        To use your own audio, replace the src below with your file path.
+    -->
+    <div class="audio-player" id="audioPlayer">
+        <button class="play-btn" id="playBtn" onclick="toggleAudio()">
+            <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+            <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="hidden">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+        </button>
+        <div class="track-info">
+            <span class="track-title">Champions</span>
+            <span class="track-artist">IShowSpeed</span>
+        </div>
+        <div class="visualizer" id="visualizer">
+            <div class="visualizer-bar" style="height: 6px"></div>
+            <div class="visualizer-bar" style="height: 12px"></div>
+            <div class="visualizer-bar" style="height: 8px"></div>
+            <div class="visualizer-bar" style="height: 14px"></div>
+            <div class="visualizer-bar" style="height: 10px"></div>
+        </div>
+    </div>
+
+    <audio id="bgAudio" loop>
+        <!-- REPLACE THIS WITH YOUR LICENSED AUDIO FILE -->
+        <source src="champions-ishowspeed.mp3" type="audio/mpeg">
+        <!-- Fallback: the player will show but won't play until you add a valid file -->
+    </audio>
+
+    <script>
+        // ===== CONFIG =====
+        const API_URL = "http://localhost:8000"; // Change to your deployed backend URL
+        let currentContext = "knockout";
+        let isPlaying = false;
+        let visualizerInterval = null;
+
+        // ===== PARTICLE SYSTEM =====
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.speedY = (Math.random() - 0.5) * 0.3;
+                this.opacity = Math.random() * 0.5 + 0.1;
+                this.color = Math.random() > 0.5 ? '255, 215, 0' : '0, 200, 83';
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 80; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ===== GSAP SCROLL ANIMATIONS =====
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Navbar scroll effect
+        ScrollTrigger.create({
+            start: "top -80",
+            end: 99999,
+            toggleClass: { className: "scrolled", targets: "#navbar" }
+        });
+
+        // Feature cards
+        gsap.utils.toArray('.feature-card').forEach((card, i) => {
+            gsap.from(card, {
+                scrollTrigger: {
+                    trigger: card,
+                    start: "top 85%",
+                    toggleActions: "play none none reverse"
+                },
+                y: 60,
+                opacity: 0,
+                duration: 0.8,
+                delay: i * 0.15,
+                ease: "power3.out"
+            });
+        });
+
+        // Steps
+        gsap.utils.toArray('[data-step]').forEach((step, i) => {
+            gsap.to(step, {
+                scrollTrigger: {
+                    trigger: step,
+                    start: "top 80%",
+                    toggleActions: "play none none reverse"
+                },
+                x: 0,
+                opacity: 1,
+                duration: 0.8,
+                delay: i * 0.2,
+                ease: "power3.out"
+            });
+        });
+
+        // Hero elements
+        gsap.from(".hero-badge", { opacity: 0, y: -20, duration: 0.8, delay: 0.2 });
+        gsap.from(".hero h1", { opacity: 0, y: 40, duration: 1, delay: 0.4, ease: "power3.out" });
+        gsap.from(".hero-subtitle", { opacity: 0, y: 30, duration: 0.8, delay: 0.6 });
+        gsap.from(".hero-cta-group", { opacity: 0, y: 20, duration: 0.8, delay: 0.8 });
+
+        // ===== CHAT FUNCTIONALITY =====
+        function setContext(el) {
+            document.querySelectorAll('.context-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            currentContext = el.dataset.context;
+        }
+
+        function setInput(text) {
+            document.getElementById('userInput').value = text;
+            document.getElementById('userInput').focus();
+        }
+
+        function addMessage(text, isUser) {
+            const chat = document.getElementById('chat');
+            const msg = document.createElement('div');
+            msg.className = `chat-message ${isUser ? 'user' : 'ai'}`;
+            msg.innerHTML = text;
+            chat.appendChild(msg);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function showTyping() {
+            const chat = document.getElementById('chat');
+            const typing = document.createElement('div');
+            typing.className = 'typing-indicator';
+            typing.id = 'typing';
+            typing.innerHTML = '<span></span><span></span><span></span>';
+            chat.appendChild(typing);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const btn = document.getElementById('sendBtn');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            input.value = '';
+            btn.disabled = true;
+            addMessage(text, true);
+            showTyping();
+
+            try {
+                const response = await fetch(`${API_URL}/predict/${encodeURIComponent(text)}?context=${currentContext}`);
+                hideTyping();
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    addMessage(`❌ ${err.error || 'Player not found'}. Try another name.`, false);
+                    btn.disabled = false;
+                    return;
+                }
+
+                const data = await response.json();
+
+                const confidenceClass = data.confidence.toLowerCase().includes('high') ? 'conf-high' : 
+                                       data.confidence.toLowerCase().includes('medium') ? 'conf-medium' : 'conf-low';
+
+                const recentHtml = data.recent_form.map(r => {
+                    const emoji = r.result === 'scored' ? '✅' : '❌';
+                    return `${emoji} ${r.competition} (${r.context})`;
+                }).join('<br>');
+
+                const directionHtml = Object.entries(data.direction_breakdown).map(([dir, stats]) => {
+                    const pct = stats.rate || 0;
+                    return `
+                        <div class="dir-bar">
+                            <span class="label">${dir}</span>
+                            <div class="track"><div class="fill" style="width: ${pct}%"></div></div>
+                            <span class="pct">${pct}%</span>
+                        </div>
+                    `;
+                }).join('');
+
+                const html = `
+                    <div class="prediction-card">
+                        <div class="player-name">${data.player_name} <span style="font-size:14px; color: var(--text-muted);">${data.country}</span></div>
+                        <div class="player-meta">${data.total_penalties} career penalties analyzed</div>
+
+                        <div class="big-prediction">
+                            <div class="number">${data.predicted_score_probability}%</div>
+                            <div class="label">Predicted Score Probability</div>
+                        </div>
+
+                        <span class="confidence-pill ${confidenceClass}">${data.confidence}</span>
+
+                        <div class="insight-box">
+                            <strong>🧠 AI Insight:</strong> ${data.ai_insight}
+                        </div>
+
+                        <div class="stats-row">
+                            <div class="stat-cell">
+                                <div class="value">${data.overall_conversion_rate}%</div>
+                                <div class="label">Career Rate</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="value">${data.shootout_conversion_rate}%</div>
+                                <div class="label">Shootout Rate</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="value">${data.context_analysis.context_rate}%</div>
+                                <div class="label">${data.context_analysis.context.replace(/_/g, ' ')}</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="value">${data.favorite_direction}</div>
+                                <div class="label">Favorite Side</div>
+                            </div>
+                        </div>
+
+                        <div class="direction-bars">
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Direction Breakdown</div>
+                            ${directionHtml}
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Recent Form (Last 5)</div>
+                            <div style="font-size: 13px; line-height: 1.8; color: var(--text-muted);">${recentHtml}</div>
+                        </div>
+                    </div>
+                `;
+
+                addMessage(html, false);
+
+            } catch (error) {
+                hideTyping();
+                addMessage(`⚠️ Could not connect to prediction engine. Make sure the backend is running at ${API_URL}`, false);
+            }
+
+            btn.disabled = false;
+        }
+
+        // ===== AUDIO PLAYER =====
+        function toggleAudio() {
+            const audio = document.getElementById('bgAudio');
+            const playIcon = document.getElementById('playIcon');
+            const pauseIcon = document.getElementById('pauseIcon');
+
+            if (isPlaying) {
+                audio.pause();
+                isPlaying = false;
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                stopVisualizer();
+            } else {
+                // Check if audio source is valid
+                if (!audio.src || audio.src === window.location.href) {
+                    alert('Audio file not found. Add your licensed audio file and update the <source> tag in the HTML.');
+                    return;
+                }
+                audio.play().then(() => {
+                    isPlaying = true;
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                    startVisualizer();
+                }).catch(e => {
+                    alert('Could not play audio. Make sure the file exists and is properly licensed.');
+                });
+            }
+        }
+
+        function startVisualizer() {
+            const bars = document.querySelectorAll('.visualizer-bar');
+            visualizerInterval = setInterval(() => {
+                bars.forEach(bar => {
+                    const height = Math.random() * 20 + 4;
+                    bar.style.height = height + 'px';
+                });
+            }, 100);
+        }
+
+        function stopVisualizer() {
+            if (visualizerInterval) clearInterval(visualizerInterval);
+            const bars = document.querySelectorAll('.visualizer-bar');
+            bars.forEach((bar, i) => {
+                const heights = [6, 12, 8, 14, 10];
+                bar.style.height = heights[i] + 'px';
+            });
+        }
+
+        // ===== SMOOTH SCROLL FOR NAV LINKS =====
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
